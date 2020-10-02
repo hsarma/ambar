@@ -1,59 +1,59 @@
 version: "2.1"
 networks:
   internal_network:
-services:      
+services:
   db:
     restart: always
     networks:
       - internal_network
-    image: repo.ambar.cloud:443/ambar-mongodb:2.1
+    image: localhost:5000/ambar-mongodb:2.1
     environment:
       - cacheSizeGB=2
     volumes:
-      - ${dataPath}/db:/data/db
+      - /home/mtadmin/ambar/data/db:/data/db
     expose:
-      - "27017"   
+      - "27017"
   es:
     restart: always
     networks:
       - internal_network
-    image: repo.ambar.cloud:443/ambar-es:2.1
+    image: localhost:5000/ambar-es:2.1
     expose:
-      - "9200" 
+      - "9200"
     environment:
       - cluster.name=ambar-es
       - ES_JAVA_OPTS=-Xms2g -Xmx2g
     ulimits:
       memlock:
         soft: -1
-        hard: -1  
+        hard: -1
       nofile:
         soft: 65536
         hard: 65536
     cap_add:
       - IPC_LOCK
     volumes:
-      - ${dataPath}/es:/usr/share/elasticsearch/data
+      - /home/mtadmin/ambar/data/es:/usr/share/elasticsearch/data
   rabbit:
     restart: always
     networks:
       - internal_network
-    image: repo.ambar.cloud:443/ambar-rabbit:2.1
+    image: localhost:5000/ambar-rabbit:2.1
     hostname: rabbit
     expose:
       - "15672"
-      - "5672"   
+      - "5672"
     volumes:
-      - ${dataPath}/rabbit:/var/lib/rabbitmq
+      - /home/mtadmin/ambar/data/rabbit:/var/lib/rabbitmq
   redis:
     restart: always
     sysctls:
       - net.core.somaxconn=1024
     networks:
       - internal_network
-    image: repo.ambar.cloud:443/ambar-redis:2.1
+    image: localhost:5000/ambar-redis:2.1
     expose:
-      - "6379" 
+      - "6379"
   serviceapi:
     depends_on:
       redis:
@@ -67,17 +67,17 @@ services:
     restart: always
     networks:
       - internal_network
-    image: repo.ambar.cloud:443/ambar-serviceapi:2.1
+    image: localhost:5000/ambar-serviceapi:2.1
     expose:
-      - "8081"  
-    environment:            
+      - "8081"
+    environment:
       - mongoDbUrl=mongodb://db:27017/ambar_data
       - elasticSearchUrl=http://es:9200
       - redisHost=redis
       - redisPort=6379
       - rabbitHost=amqp://rabbit
-      - langAnalyzer=${langAnalyzer}  
-      - SLAO_HOSTNAME=ambar 
+      - langAnalyzer=ambar_en
+      - SLAO_HOSTNAME=ambar
       - SLAO_API_KEY=
   webapi:
     depends_on:
@@ -86,26 +86,26 @@ services:
     restart: always
     networks:
       - internal_network
-    image: repo.ambar.cloud:443/ambar-webapi:2.1
+    image: localhost:5000/ambar-webapi:2.1
     expose:
       - "8080"
     ports:
       - "8080:8080"
-    environment:            
+    environment:
       - uiLang=en
       - mongoDbUrl=mongodb://db:27017/ambar_data
       - elasticSearchUrl=http://es:9200
       - redisHost=redis
       - redisPort=6379
       - serviceApiUrl=http://serviceapi:8081
-      - rabbitHost=amqp://rabbit  
+      - rabbitHost=amqp://rabbit
       - SLAO_HOSTNAME=ambar
-      - SLAO_API_KEY=  
+      - SLAO_API_KEY=
   frontend:
     depends_on:
       webapi:
         condition: service_healthy
-    image: repo.ambar.cloud:443/ambar-frontend:2.1
+    image: localhost:5000/ambar-frontend:2.1
     restart: always
     networks:
       - internal_network
@@ -114,34 +114,32 @@ services:
     expose:
       - "80"
     environment:
-      - api=http://${ambarHostIpAddress}:8080  
+      - NODE_ENV=production
+      - api=http://172.104.183.167:8080
+      - PORT=80
   pipeline0:
-    depends_on: 
-      serviceapi: 
-        condition: service_healthy                            
-    image: repo.ambar.cloud:443/ambar-pipeline:2.1
+    depends_on:
+      serviceapi:
+        condition: service_healthy
+    image: localhost:5000/ambar-pipeline:2.1
     restart: always
     networks:
-      - internal_network  
-    environment:                
+      - internal_network
+    environment:
       - id=0
       - api_url=http://serviceapi:8081
       - rabbit_host=amqp://rabbit
-  ${crawlerName}:
-    depends_on: 
-      serviceapi: 
-        condition: service_healthy 
-    image: repo.ambar.cloud:443/ambar-local-crawler:2.1
+  LocalCrawler:
+    depends_on:
+      serviceapi:
+        condition: service_healthy
+    image: localhost:5000/ambar-local-crawler:2.1
     restart: always
     networks:
       - internal_network
     expose:
       - "8082"
-    environment:      
-      - name=${crawlerName}
+    environment:
+      - name=LocalCrawler
     volumes:
-      - ${pathToCrawl}:/usr/data
-
-
-  
-  
+      - /home/mtadmin/ambar/data/crawl:/usr/data

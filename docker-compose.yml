@@ -115,7 +115,7 @@ services:
       - "80"
     environment:
       - NODE_ENV=production
-      - api=http://172.104.183.167:8080
+      - api=http://139.59.65.4:8080
       - PORT=80
   pipeline0:
     depends_on:
